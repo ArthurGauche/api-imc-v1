@@ -1,0 +1,86 @@
+const express = require('express');
+const db = require('./db')
+const app = express()
+const port = 3000
+app.use(express.json())
+
+function calcularIMC(altura, peso) {
+  const resultado = peso / (altura * altura);
+  const imc = parseFloat(resultado.toFixed(2));
+  let status="";
+    if(imc<18.5){
+        status="Abaixo do peso ideal";
+    }else if(imc<25){
+        status="Peso ideal";
+    }else if(imc<30){
+        status="Acima do Peso ideal";
+    }else{
+        status="Obesidade";
+    }
+    return { imc, status };
+}
+
+app.get('/', (req, res) => {
+  res.send('Hello World!')
+})
+
+app.get('/test', (req, res) => {
+  res.send('Test executed')
+})
+
+app.get('/prontuarios', async(req, res) => {
+  try {
+    const [rows]=await db.execute("SELECT * FROM pacientes")
+    res.status(200).json(rows)
+  } catch (error) {
+    res.status(500).json({
+        mensagem:"Internal Server Error",
+        detalhes: error.message
+    });
+  }
+})
+
+app.get('/paciente/:id', async(req, res) => {
+    const {id}=req.params;
+  try {
+    const [rows]=await db.execute("SELECT * FROM pacientes where id= ?",[id]);
+    if(rows.length===0){
+        res.status(404).json({
+        mensagem:"Patient not found",
+        detalhes: error.message
+    });
+    }
+    res.status(200).json(rows)
+  } catch (error) {
+    res.status(500).json({
+        mensagem:"Internal Server Error",
+        detalhes: error.message
+    });
+  }
+})
+
+app.post('/paciente',async(req,res)=>{
+    const {nome,idade,altura,peso}=req.body;
+    if(!nome||!idade||!altura||!peso){
+        res.status(400).json({
+        mensagem:"Solicitação inválida",
+        detalhes: error.message
+    });
+    }
+    const {imc,status} = calcularIMC(Number(altura),Number(peso));
+    try{
+        const [result]=await db.execute("INSERT INTO pacientes (nome, idade, altura, peso, imc, status) VALUES (?, ?, ?, ?, ?, ?)",[nome,idade,altura,peso,imc,status]);
+        res.status(201).json({
+            id: result.insertId,
+            nome,
+            idade,
+            altura,
+            peso,
+            imc,
+            status
+        });
+    }
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
